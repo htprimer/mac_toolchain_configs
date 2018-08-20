@@ -12,3 +12,11 @@
 
 alias axcbuild='osascript -e "tell application \"Xcode\" to build active workspace document"'
 alias axcrun='osascript -e "tell application \"Xcode\" to run active workspace document"'
+
+function xcode() {
+    if [ -z $1 ]; then
+        open /Applications/Xcode.app
+    else
+        open -a Xcode $1
+    fi
+}
