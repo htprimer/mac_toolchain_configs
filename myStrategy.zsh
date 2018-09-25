@@ -38,7 +38,6 @@ _zsh_autosuggest_strategy_my_default() {
 
     local cmd=${${(z)prefix}[1]}
     local arg=${${(z)prefix}[2]}
-    typeset -g otherHint
 
     if [ $cmd = 'cd' -a -n "$arg" ]; then 
         local dirs=()
@@ -86,13 +85,14 @@ _zsh_autosuggest_strategy_my_default() {
 
     bindkey "^[OB" down-line-or-history
     bindkey "^[OA" up-line-or-history
+    bindkey "^M" accept-line
     if (( $#all_match_hint )) {
         bindkey "^[OB" my_strategy_choose_hint_down
         typeset -g current_line_index=0
     }
 
-	# Get the history items that match
-	# - (r) subscript flag makes the pattern match on values
+    # Get the history items that match
+    # - (r) subscript flag makes the pattern match on values
 }
 
 _zsh_my_strategy_choose_hint_down() {
@@ -100,16 +100,14 @@ _zsh_my_strategy_choose_hint_down() {
     bindkey "^M" my_strategy_accept_hint
     (( current_line_index++ ))
     if (( $current_line_index > $#all_match_hint )) {
-        current_line_index=$#all_match_hint
-        echo -ne '\007'
+        current_line_index=1
     }
 }
 
 _zsh_my_strategy_choose_hint_up() {
     (( current_line_index-- ))
     if (( $current_line_index <= 0 )) {
-        current_line_index=1
-        echo -ne '\007'
+        current_line_index=$#all_match_hint
     }
 }
 
@@ -134,7 +132,6 @@ _zsh_autosuggest_highlight_reset() {
 _zsh_autosuggest_highlight_apply() {
 	typeset -g _ZSH_AUTOSUGGEST_LAST_HIGHLIGHT
     
-
 	if (( $#POSTDISPLAY )); then
 		typeset -g _ZSH_AUTOSUGGEST_LAST_HIGHLIGHT="$#BUFFER $(($#BUFFER + $#POSTDISPLAY)) $ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE"
 		region_highlight+=("$_ZSH_AUTOSUGGEST_LAST_HIGHLIGHT")
@@ -160,7 +157,6 @@ _zsh_autosuggest_suggest() {
     local suggestion="$1"
 
     if [[ -n "$suggestion" ]] && (( $#BUFFER )); then
-        # todo 研究方向键选择
         typeset -g right_hint="${suggestion#$BUFFER}"
         local all_hint=$'\n'"$(print -l $all_match_hint)"
         POSTDISPLAY="$right_hint$all_hint"
