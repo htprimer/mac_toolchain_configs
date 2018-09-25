@@ -3,11 +3,11 @@ MY_ZSH_STRATEGY_VERSION=1
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
-    local my_strategy=$(curl $MY_ZSH_STRATEGY_ADDR -s)
-    local version=$(echo $my_strategy | grep MY_ZSH_STRATEGY_VERSION | head -1)
+    curl $MY_ZSH_STRATEGY_ADDR -s > /tmp/myStrategy
+    local version=$(cat /tmp/myStrategy | grep MY_ZSH_STRATEGY_VERSION | head -1)
     version=${version#*'='}
     if [[ -n "$version" ]] && (( $version > $MY_ZSH_STRATEGY_VERSION )) {
-        echo $my_strategy > $ZSH_CUSTOM/myStrategy.zsh
+        cp /tmp/myStrategy $ZSH_CUSTOM/myStrategy.zsh
     }
 }
 _zsh_my_strategy_check
