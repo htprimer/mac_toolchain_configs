@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.1
+MY_ZSH_STRATEGY_VERSION=1.2
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -45,11 +45,11 @@ _zsh_autosuggest_strategy_my_default() {
     local blank=' '
     if (( $prefix[(I)$blank] > 0 )) {
         if [[ "$cmd" == 'cd' ]] {
-            for file in *; do 
+            for file (*) { 
                 if [ -d $file ]; then
                     dirs[$file]=$file
                 fi
-            done
+            }
             local match_dirs=(${dirs[(R)$arg*]})  #查找当前目录
             if (( $#match_dirs <= 0 )) {
                 arg=${(U)arg} #转成大写尝试
@@ -74,12 +74,12 @@ _zsh_autosuggest_strategy_my_default() {
         }
     } else {  #无参数
         if [[ "$prefix" == 'cd' ]] {
-            for file in *; do
+            for file (*) {
                 if [ -d $file ]; then
                     dirs[$file]=$file
                     all_match_hint+="cd $file"
                 fi
-            done
+            }
             typeset -g suggestion="$all_match_hint[1]"  #优化成历史有且在当前目录 但是性能不好
             all_match_hint=(${all_match_hint:#$suggestion})
             all_match_hint=($all_match_hint[1,10])
@@ -88,10 +88,12 @@ _zsh_autosuggest_strategy_my_default() {
     }
 
     local hint=${history[(r)${prefix}*]}  #history是一个哈希表
-    all_match_hint=(${(u)history[(R)$prefix*]})
-    all_match_hint=(${all_match_hint:#$hint})
-    all_match_hint=(${all_match_hint:#$prefix})
-    all_match_hint=($all_match_hint[1,10])
+    if (( $#hint )) {
+        all_match_hint=(${(u)history[(R)$prefix*]})
+        all_match_hint=(${all_match_hint:#$hint})
+        all_match_hint=(${all_match_hint:#$prefix})
+        all_match_hint=($all_match_hint[1,10])
+    }
 
     #过滤无效记录
     typeset -g suggestion=""
@@ -105,6 +107,16 @@ _zsh_autosuggest_strategy_my_default() {
         local dir=${${(z)suggestion}[2]}
         dir="${dirs[(r)$dir]}"
         (( $#dir == 0 )) && typeset -g suggestion=""
+    }
+    if (( $#suggestion <= 0 )) && (( $#prefix >= 5 )) {  #开启模糊匹配
+        local pattern='*'
+        for i ({1..$#prefix}); do
+            pattern+="$prefix[i]*"
+        done
+        all_match_hint=(${(u)history[(R)$pattern]})
+        all_match_hint=($all_match_hint[1,10])
+        # echo $pattern
+        # echo $all_match_hint
     }
 
     bindkey "^[OB" down-line-or-history
@@ -167,7 +179,7 @@ _zsh_autosuggest_highlight_apply() {
                 (( current_line_start+=$#line ))
             }
             local current_line=$all_match_hint[$current_line_index]
-            local current_hint_highlight="$current_line_start $(($current_line_start + $#current_line)) fg=cyan,bg=8,bold"
+            local current_hint_highlight="$current_line_start $(($current_line_start + $#current_line)) fg=magenta,bg=8,bold"
             region_highlight+=("$current_hint_highlight")
         }
 	else
@@ -184,6 +196,9 @@ _zsh_autosuggest_suggest() {
         local all_hint=$'\n'"$(print -l $all_match_hint)"
         POSTDISPLAY="$right_hint$all_hint"
         # POSTDISPLAY="${suggestion#$BUFFER}"
+    elif (( $#all_match_hint )); then
+        typeset -g right_hint=''
+        POSTDISPLAY=$'\n'"$(print -l $all_match_hint)"
     else
         unset right_hint 
         unset POSTDISPLAY
