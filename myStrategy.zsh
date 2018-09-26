@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1
+MY_ZSH_STRATEGY_VERSION=1.1
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -32,43 +32,67 @@ _zsh_autosuggest_strategy_my_default() {
 	# - (#m) globbing flag enables setting references for match data
 	# TODO: Use (b) flag when we can drop support for zsh older than v5.0.8
     local prefix="${1//(#m)[\\*?[\]<>()|^~#]/\\$MATCH}"
-    if [[ $prefix = ' '* ]] {
+    if [[ $prefix = ' '* ]] || [[ $prefix = '\t'* ]] {
         return
     }
 
     local cmd=${${(z)prefix}[1]}
     local arg=${${(z)prefix}[2]}
+    local -A dirs=()  #用关联数组，R下标标志返回所有结果
 
-    if [ $cmd = 'cd' -a -n "$arg" ]; then 
-        local dirs=()
-        local c=1
-        for file in *; do
-            if [ -d $file ]; then
-                dirs[$c]=$file
-                ((c++))
-            fi
-        done
-        local dir=${dirs[(r)${arg}*]}  #查找当前目录
-        if [ -n "$dir" ]; then 
-            typeset -g suggestion="cd $dir"
-            return
-        else  #转成大写尝试
-            dir=${dirs[(r)${(U)arg}*]}
-            if [ -n "$dir" ]; then 
-                BUFFER="cd ${(U)arg}"
-                typeset -g suggestion="cd $dir"
+    typeset -g all_match_hint=()
+
+    local blank=' '
+    if (( $prefix[(I)$blank] > 0 )) {
+        if [[ "$cmd" == 'cd' ]] {
+            for file in *; do 
+                if [ -d $file ]; then
+                    dirs[$file]=$file
+                fi
+            done
+            local match_dirs=(${dirs[(R)$arg*]})  #查找当前目录
+            if (( $#match_dirs <= 0 )) {
+                arg=${(U)arg} #转成大写尝试
+                match_dirs=(${dirs[(R)$arg*]})
+                if (( $#match_dirs )) { 
+                    BUFFER="cd $arg"
+                }
+            } elif [[ "$arg" != "${(U)arg}" ]] {  #小写字母有结果 小写字母加入大写结果
+                for file in ${dirs[(R)${(U)arg}*]}; do
+                    all_match_hint+="cd $file"
+                done
+            }
+            if (( $#match_dirs )) {
+                typeset -g suggestion="cd $match_dirs[1]"
+                for file in $match_dirs; do
+                    all_match_hint+="cd $file"
+                done
+                all_match_hint=(${all_match_hint:#$suggestion})
+                all_match_hint=($all_match_hint[1,10])
                 return
-            fi
-        fi
-    fi
+            }
+        }
+    } else {  #无参数
+        if [[ "$prefix" == 'cd' ]] {
+            for file in *; do
+                if [ -d $file ]; then
+                    dirs[$file]=$file
+                    all_match_hint+="cd $file"
+                fi
+            done
+            typeset -g suggestion="$all_match_hint[1]"  #优化成历史有且在当前目录 但是性能不好
+            all_match_hint=(${all_match_hint:#$suggestion})
+            all_match_hint=($all_match_hint[1,10])
+            return
+        }
+    }
 
-    local hint=${history[(r)${prefix}*]}
-    typeset -g all_match_hint=(${(u)history[(R)$prefix*]})
+    local hint=${history[(r)${prefix}*]}  #history是一个哈希表
+    all_match_hint=(${(u)history[(R)$prefix*]})
     all_match_hint=(${all_match_hint:#$hint})
     all_match_hint=(${all_match_hint:#$prefix})
     all_match_hint=($all_match_hint[1,10])
 
-    local blank=' '
     #过滤无效记录
     typeset -g suggestion=""
     if (( $hint[(I)$blank] > 0 )); then
@@ -90,7 +114,6 @@ _zsh_autosuggest_strategy_my_default() {
         bindkey "^[OB" my_strategy_choose_hint_down
         typeset -g current_line_index=0
     }
-
     # Get the history items that match
     # - (r) subscript flag makes the pattern match on values
 }
@@ -191,6 +214,10 @@ _zsh_autosuggest_accept() {
 
         # Move the cursor to the end of the buffer
         CURSOR=${#BUFFER}
+        #接收补全后重置方向键
+        bindkey "^[OB" down-line-or-history
+        bindkey "^[OA" up-line-or-history
+        bindkey "^M" accept-line
     fi
 
     _zsh_autosuggest_invoke_original_widget $@
