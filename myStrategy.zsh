@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.3
+MY_ZSH_STRATEGY_VERSION=1.4
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -10,7 +10,7 @@ _zsh_my_strategy_check() {
         cp /tmp/myStrategy $ZSH_CUSTOM/myStrategy.zsh
     }
 }
-_zsh_my_strategy_check
+((sleep 2; _zsh_my_strategy_check) &)
 
 zshaddhistory() { whence ${${(z)1}[1]} >| /dev/null || return 1 }
 
@@ -32,16 +32,13 @@ _zsh_autosuggest_strategy_my_default() {
 	# - (#m) globbing flag enables setting references for match data
 	# TODO: Use (b) flag when we can drop support for zsh older than v5.0.8
     local prefix="${1//(#m)[\\*?[\]<>()|^~#]/\\$MATCH}"
-    if [[ $prefix == ' '* ]] || [[ $prefix == '\t'* ]] {
-        return
-    }
 
     typeset -g suggestion=""
     typeset -g all_match_hint=()
     local input_array=(${(z)prefix})
 
     if [[ "$input_array[1]" == 'cd' ]] {
-        _zsh_my_strategy_cd_complete $input_array[2]
+        _zsh_my_strategy_cd_complete $input_array[2]  #cd 补全提示
     } else {
         local hint=${history[(r)${prefix}*]}  #history是一个哈希表
         local hint_word=(${(z)hint})
@@ -60,12 +57,15 @@ _zsh_autosuggest_strategy_my_default() {
     }
 
     if (( $#suggestion <= 0 )) && (( $#prefix >= 5 )) && (( $#all_match_hint <= 0 )) {  #开启模糊匹配
-        local pattern='*'
-        for i ({1..$#prefix}) {
-            pattern+="$prefix[i]*"
+        local blank=' '
+        if (( $prefix[(I)$blank] <= 0 )) {  #没有空格开启模糊匹配
+            local pattern='*'
+            for i ({1..$#prefix}) {
+                pattern+="$prefix[i]*"
+            }
+            all_match_hint=(${(u)history[(R)$pattern]})
+            all_match_hint=($all_match_hint[1,10])
         }
-        all_match_hint=(${(u)history[(R)$pattern]})
-        all_match_hint=($all_match_hint[1,10])
     }
 
     bindkey "^[OB" down-line-or-history
@@ -277,6 +277,7 @@ _zsh_autosuggest_modify() {
         if [[ "$added" = "${orig_postdisplay:0:$#added}" ]]; then
             POSTDISPLAY="${orig_postdisplay:$#added}"
             right_hint="${right_hint:$#added}" #更新补全
+            _zsh_autosuggest_fetch
             return $retval
         fi
     fi
