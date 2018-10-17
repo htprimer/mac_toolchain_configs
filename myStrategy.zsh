@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.4
+MY_ZSH_STRATEGY_VERSION=1.5
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -35,16 +35,21 @@ _zsh_autosuggest_strategy_my_default() {
 
     typeset -g suggestion=""
     typeset -g all_match_hint=()
+    typeset -g current_line_index=0
     local input_array=(${(z)prefix})
 
     if [[ "$input_array[1]" == 'cd' ]] {
         _zsh_my_strategy_cd_complete $input_array[2]  #cd 补全提示
+    } elif [[ "$input_array[1]" == 'git' && "$input_array[2]" == 'checkout' ]] {
+        _zsh_my_strategy_git_complete $input_array[3] #切分支补全
     } else {
         local hint=${history[(r)${prefix}*]}  #history是一个哈希表
         local hint_word=(${(z)hint})
 
         if [[ "$hint_word[1]" == 'cd' ]] {
-            _zsh_my_strategy_cd_complete
+            _zsh_my_strategy_cd_complete   
+        } elif [[ "$hint_word[1]" == 'git' && "$hint_word[2]" == 'checkout' ]] {
+            _zsh_my_strategy_git_complete
         } else {
             [ -n "$(whence $hint_word[1])" ] && suggestion="$hint"  #过滤无效记录
             if (( $#hint )) {
@@ -73,10 +78,37 @@ _zsh_autosuggest_strategy_my_default() {
     bindkey "^M" accept-line
     if (( $#all_match_hint )) {
         bindkey "^[OB" my_strategy_choose_hint_down
-        typeset -g current_line_index=0
     }
     # Get the history items that match
     # - (r) subscript flag makes the pattern match on values
+}
+
+_zsh_my_strategy_git_complete() {
+    local git=$(git status 2>&1)
+    if [[ "$git" == 'fatal'* ]] {
+        return
+    }
+    local -A branchs=()
+    for origin_branch ($(git branch -r)) {
+        local branch_name=${origin_branch#'origin/'}
+        if [[ $branch_name != 'HEAD'* ]] && [[ $branch_name != '->' ]] {
+            branchs[$branch_name]=$branch_name
+        }
+    }
+    if (( $#1 >0 )) {
+        local match_branchs=(${branchs[(R)$1*]})
+        for branch_name ($match_branchs) {
+            all_match_hint+="git checkout $branch_name"
+        }
+    } else {
+        for branch_name ($branchs) {
+            all_match_hint+="git checkout $branch_name"
+        }
+    }
+    all_match_hint=($all_match_hint[1,10])
+    all_match_hint=(${(o)all_match_hint})
+    suggestion="$all_match_hint[1]"
+    all_match_hint=(${all_match_hint:#$suggestion})
 }
 
 _zsh_my_strategy_cd_complete() {
