@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.5
+MY_ZSH_STRATEGY_VERSION=1.6
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -135,8 +135,11 @@ _zsh_my_strategy_cd_complete() {
                 }
             }
         } else {
-            for file (*) {
-                [[ -d $file ]] && dirs[$file]=$file 
+            local items=($(ls))
+            if (( $#items )) {  #判断是否空目录 避免*号报错
+                for file (*) {
+                    [[ -d $file ]] && dirs[$file]=$file 
+                }
             }
         }
         local match_dirs=(${dirs[(R)$dir$arg*]})  #查找当前目录
@@ -158,15 +161,18 @@ _zsh_my_strategy_cd_complete() {
             all_match_hint=($all_match_hint[1,10])
         }
     } else {
-        for file (*) {
-            if [[ -d $file ]] {
-                dirs[$file]=$file
-                all_match_hint+="cd $file"
+        local items=($(ls))
+        if (( $#items )) {
+            for file (*) {
+                if [[ -d $file ]] {
+                    dirs[$file]=$file
+                    all_match_hint+="cd $file"
+                }
             }
+            suggestion="$all_match_hint[1]"  #优化成历史有且在当前目录 但是性能不好
+            all_match_hint=(${all_match_hint:#$suggestion})
+            all_match_hint=($all_match_hint[1,10])
         }
-        suggestion="$all_match_hint[1]"  #优化成历史有且在当前目录 但是性能不好
-        all_match_hint=(${all_match_hint:#$suggestion})
-        all_match_hint=($all_match_hint[1,10])
     }
 }
 
