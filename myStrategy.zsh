@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.6
+MY_ZSH_STRATEGY_VERSION=1.7
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
