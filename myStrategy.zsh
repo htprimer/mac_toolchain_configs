@@ -61,18 +61,6 @@ _zsh_autosuggest_strategy_my_default() {
         }
     }
 
-    if (( $#suggestion <= 0 )) && (( $#prefix >= 5 )) && (( $#all_match_hint <= 0 )) {  #开启模糊匹配
-        local blank=' '
-        if (( $prefix[(I)$blank] <= 0 )) {  #没有空格开启模糊匹配
-            local pattern='*'
-            for i ({1..$#prefix}) {
-                pattern+="$prefix[i]*"
-            }
-            all_match_hint=(${(u)history[(R)$pattern]})
-            all_match_hint=($all_match_hint[1,10])
-        }
-    }
-
     bindkey "^[OB" down-line-or-history
     bindkey "^[OA" up-line-or-history
     bindkey "^M" accept-line
