@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.8
+MY_ZSH_STRATEGY_VERSION=1.9
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -74,11 +74,9 @@ _zsh_autosuggest_strategy_my_default() {
 }
 
 _zsh_my_strategy_git_complete() {
-    typeset git
-    git=$(git status 2>&1)
-    if [[ "$git" == 'fatal'* ]] {
+    if [ ! -d '.git' ]; then
         return
-    }
+    fi
     typeset -A branchs
     # typeset -a todo_branchs
     # todo_branchs=($(git branch -r))
