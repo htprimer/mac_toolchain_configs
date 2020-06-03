@@ -2,6 +2,7 @@ const process = require('process')
 const child_process = require('child_process')
 const readline = require('readline')
 const https = require('https')
+const fs = require('fs')
 
 /**
  * @param {string} str
@@ -87,4 +88,23 @@ let httpGet = (url) => {
       })
     }).on('error', rej)
   })
+}
+
+/**
+ * 
+ * @param {string} path 
+ * @param {(file:string, name:string)=>{}} callback 
+ */
+async function visitAllFile(path, callback) {
+  const dir = await fs.promises.opendir(path)
+  let promises = []
+  for await (const dirent of dir) {
+      if (dirent.isDirectory() && dirent.name.search(/^\./) < 0) {
+          let res = visitAllFile(`${path}/${dirent.name}`, callback)
+          promises.push(res)
+      } else {
+          callback(`${path}/${dirent.name}`, dirent.name)
+      }
+  }
+  await Promise.all(promises)
 }

@@ -14,10 +14,20 @@
 alias axcbuild='osascript -e "tell application \"Xcode\" to build active workspace document"'
 alias axcrun='osascript -e "tell application \"Xcode\" to run active workspace document"'
 
+function debug() {
+    osascript -e "display dialog \"$1 $2 $3\"" >> /dev/null
+}
+
 function xcode() {
-    if [ -z $1 ]; then
+    if (( $#1 <= 0 )) {
         open /Applications/Xcode.app
-    else
+    } elif [[ $1 == 'space' ]] {
+        open -a Xcode *.xcworkspace
+    } elif [[ $1 == 'project' ]] {
+        open -a Xcode *.xcodeproj
+    } elif [[ $1 == 'quit' ]] {
+        osascript -e "tell application \"Xcode\" to run quit"
+    }  else
         open -a Xcode $1
     fi
 }
