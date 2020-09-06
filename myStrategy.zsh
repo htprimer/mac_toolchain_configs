@@ -1,5 +1,5 @@
 #config
-MY_ZSH_STRATEGY_VERSION=1.9
+MY_ZSH_STRATEGY_VERSION=2.0
 MY_ZSH_STRATEGY_ADDR="https://raw.githubusercontent.com/htprimer/mac_toolchain_configs/master/myStrategy.zsh"
 
 _zsh_my_strategy_check() {
@@ -345,4 +345,26 @@ _zsh_autosuggest_modify() {
     fi
 
     return $retval
+}
+
+# 重写fetch方法
+_zsh_autosuggest_fetch_suggestion() {
+	typeset -g suggestion
+	local -a strategies
+	local strategy
+
+	# Ensure we are working with an array
+	strategies=(${=ZSH_AUTOSUGGEST_STRATEGY})
+
+	for strategy in $strategies; do
+		# Try to get a suggestion from this strategy
+		_zsh_autosuggest_strategy_$strategy "$1"
+
+		# Ensure the suggestion matches the prefix
+        # 让 suggestion 与当前 buffer 比较，因为buffer可能会被改动
+		[[ "$suggestion" != "$BUFFER"* ]] && unset suggestion
+
+		# Break once we've found a valid suggestion
+		[[ -n "$suggestion" ]] && break
+	done
 }

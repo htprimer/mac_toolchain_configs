@@ -90,6 +90,28 @@ let httpGet = (url) => {
   })
 }
 
+const httpPost = (url, body) => {
+  return new Promise((res, rej) => {
+    let req = http.request(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }, resp => {
+      let data = ''
+      resp.on('data', chunk => {
+        data += chunk
+      })
+      resp.on('end', () => {
+        res(JSON.parse(data))
+      })
+    })
+    req.on('error', rej)
+    body && req.write(JSON.stringify(body))
+    req.end()
+  })
+}
+
 /**
  * 
  * @param {string} path 
