@@ -74,15 +74,17 @@ _zsh_autosuggest_strategy_my_default() {
 }
 
 _zsh_my_strategy_git_complete() {
-    if [ ! -d '.git' ]; then
+    typeset AllBranchs
+    AllBranchs=($(git branch 2>&1))
+    if [[ "$AllBranchs" == 'fatal'* ]] {
         return
-    fi
+    }
     typeset -A branchs
     # typeset -a todo_branchs
     # todo_branchs=($(git branch -r))
     #性能优化 远端分支数量太多则不匹配
     # if (( $#todo_branchs > 1000 )) {
-    for branch_name ($(git branch)) {
+    for branch_name ($AllBranchs) {
         if [[ $branch_name != '*' ]] {
             branchs[$branch_name]=$branch_name
         }
