@@ -61,20 +61,6 @@ function chooseLine(lineArray, done) {
   process.stdin.addListener('keypress', keypresshandle)
 }
 
-/**
- * @param {string} command
- * @param {string[]} args
- * @param
- */
-function execShell(command, args) {
-  return new Promise((res, rej) => {
-    let execShell = child_process.spawn(command, args)
-    execShell.stdout.on('data', data => process.stdout.write(data.toString()))
-    execShell.stderr.on('data', data => process.stderr.write(data.toString()))
-    execShell.on('close', res)
-  })
-}
-
 let httpGet = (url) => {
   return new Promise((res, rej) => {
     https.get(url,
@@ -129,4 +115,53 @@ async function visitAllFile(path, callback) {
       }
   }
   await Promise.all(promises)
+}
+
+async function fetchBranch(repo) {
+    if (repo.startsWith('~/')) {
+        repo = repo.replace('~/', `${process.env.HOME}/`)
+    }
+    let result = await execShell('git branch', {cwd: repo})
+    result = result.split('\n').find(line => {
+        return line.startsWith('*')
+    })
+    let branch = null
+    if (result.indexOf('detached at') >= 0) {
+        branch = (result.match(/at ([^ )]+)\)/))[1]
+    } else {
+        branch = result.split(' ').pop()
+    }
+    return branch
+}
+
+function execShell(command, options) {
+    return new Promise((res, rej) => {
+        child_process.exec(command, options, (err, stdout, stderr) => {
+            if (err) {
+                rej(err)
+            } else {
+                res(stdout)
+            }
+            process.stderr.write(stderr)
+        })
+    })
+}
+
+async function showDepend() {
+    let podfile = `${process.env.PWD}/Podfile`
+    let fileLines = null
+    try {
+        fileLines = (await fs.promises.readFile(podfile)).toString().split('\n')
+    } catch (error) {
+        console.error(error)
+    }
+    let pathBranchDict = {}
+    await Promise.all(fileLines.map(async line => {
+        if (!line.trim().startsWith('#') && line.indexOf(':path') >= 0) {
+            let result = line.match(/:path *=> *'([\S]+)'/)
+            let branch = await fetchBranch(result[1])
+            pathBranchDict[result[1]] = branch
+        }
+    }))
+    console.log(pathBranchDict)
 }
